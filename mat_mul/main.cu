@@ -7,13 +7,13 @@
 __global__ void mat_mul(Matrix* a, Matrix* b, Matrix* c) {
     int c_row = blockIdx.y * blockDim.y + threadIdx.y;
     int c_col = blockIdx.x * blockDim.x + threadIdx.x;
-
-    int acc = 0;
-    for (size_t i = 0; i < (*a).n_cols; ++i) {
-        acc += (*a)(c_row, i) * (*b)(i, c_col);
+    if (c_row < c->n_rows && c_col < c->n_cols) {
+        int acc = 0;
+        for (size_t i = 0; i < (*a).n_cols; ++i) {
+            acc += (*a)(c_row, i) * (*b)(i, c_col);
+        }
+        (*c)(c_row, c_col) = acc;
     }
-    (*c)(c_row, c_col) = acc;
-    printf("mat_mul on device done, c_row: %d, c_col: %d\n", c_row, c_col);
 }
 
 void validate_mul_on_cpu(Matrix& a, Matrix& b, Matrix& c) {
@@ -26,24 +26,25 @@ void validate_mul_on_cpu(Matrix& a, Matrix& b, Matrix& c) {
             assert(acc == c(a_row, b_col));
         }
     }
-    printf("validate_mul_on_cpu on host done\n");
 }
 
 int main() {
-    size_t a_rows = 64;
-    size_t a_cols = 64;
-    size_t b_rows = 64;
-    size_t b_cols = 64;
+    std::pair<size_t, size_t> dim_a(100, 50);
+    std::pair<size_t, size_t> dim_b(50, 200);
+    std::pair<size_t, size_t> dim_c(dim_a.first, dim_b.second);
 
-    Matrix* a = new Matrix(a_rows, a_cols);
-    Matrix* b = new Matrix(b_rows, b_cols);
-    Matrix* c = new Matrix(a_rows, b_cols);
+    Matrix* a = new Matrix(dim_a);
+    Matrix* b = new Matrix(dim_b);
+    Matrix* c = new Matrix(dim_c);
+    assert(a->n_cols == b->n_rows && c->n_rows == a->n_rows && c->n_cols == b->n_cols);
 
-    mat_mul<<<dim3(4, 4), dim3(16, 16)>>>(a, b, c);
+    std::pair<dim3, dim3> dim = get_grid_and_block_dims(c->dim);
+    mat_mul<<<dim.first, dim.second>>>(a, b, c);
     cudaDeviceSynchronize();
 
     validate_mul_on_cpu(*a, *b, *c);
     delete a, b, c;
+
     printf("SUCCESS!\n");
     return 0;
 }
