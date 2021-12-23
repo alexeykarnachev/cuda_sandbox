@@ -1,5 +1,6 @@
-#include "utils.h"
 #include <utility>
+
+#include "utils.h"
 
 class Matrix : public Managed {
    public:

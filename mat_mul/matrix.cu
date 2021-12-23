@@ -9,7 +9,7 @@ Matrix::Matrix(std::pair<size_t, size_t> dim)
     cudaMallocManaged(&data, size);
     cudaDeviceSynchronize();
     for (size_t i = 0; i < n_values; ++i) {
-        data[i] = 1;//rand() % 10;
+        data[i] = rand() % 10;
     }
 }
 
